@@ -1,0 +1,557 @@
+<title>Dot Plot Detective</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout concept: a trading-floor dot-plot grid mirrors the Fed's own SEP chart,
+   with faint slope-lines tracing each inferred speaker's path across the five
+   SEP horizons, so the guesswork is visible as a shape, not just a color. */
+:root{
+  --bg:#f9f9f7; --surface:#fcfcfb; --surface-raised:#ffffff;
+  --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,0.10);
+  --accent:#2a78d6; --accent-soft:#eaf1fb;
+  --voter:#0ca30c; --voter-soft:#e4f6e4;
+  --nonvoter:#d03b3b; --nonvoter-soft:#fbe9e9;
+  --serif:"Source Serif 4", Georgia, "Times New Roman", serif;
+  --sans:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SF Mono", Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0d0d0d; --surface:#1a1a19; --surface-raised:#201f1e;
+    --text-primary:#f0efec; --text-secondary:#c3c2b7; --text-muted:#8e8c86;
+    --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,0.10);
+    --accent:#3987e5; --accent-soft:#122235;
+    --voter:#0ca30c; --voter-soft:#0f2a12;
+    --nonvoter:#e66767; --nonvoter-soft:#331515;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0d0d0d; --surface:#1a1a19; --surface-raised:#201f1e;
+  --text-primary:#f0efec; --text-secondary:#c3c2b7; --text-muted:#8e8c86;
+  --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,0.10);
+  --accent:#3987e5; --accent-soft:#122235;
+  --voter:#0ca30c; --voter-soft:#0f2a12;
+  --nonvoter:#e66767; --nonvoter-soft:#331515;
+  color-scheme: dark;
+}
+
+*{box-sizing:border-box;}
+body{
+  background:var(--bg);
+  color:var(--text-primary);
+  font-family:var(--sans);
+  padding-left:max(16px, env(safe-area-inset-left,0px));
+  padding-right:max(16px, env(safe-area-inset-right,0px));
+}
+.wrap{max-width:980px; margin:0 auto; padding-block:28px 60px;}
+
+header.page{margin-bottom:28px;}
+.eyebrow{
+  font-family:var(--mono); font-size:11.5px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--text-muted); margin:0 0 10px;
+}
+h1{
+  font-family:var(--serif); font-weight:700; font-size:clamp(28px,4.4vw,40px);
+  line-height:1.08; margin:0 0 12px; text-wrap:balance; letter-spacing:-0.01em;
+}
+.lede{
+  font-size:15.5px; line-height:1.55; color:var(--text-secondary); max-width:640px; margin:0 0 16px;
+}
+
+details.method{
+  background:var(--surface); border:1px solid var(--border); border-radius:10px;
+  padding:14px 16px; margin-bottom:8px;
+}
+details.method summary{
+  cursor:pointer; font-weight:600; font-size:14px; color:var(--text-primary);
+  list-style:none; display:flex; align-items:center; gap:8px;
+}
+details.method summary::before{
+  content:"→"; display:inline-block; transition:transform .15s ease; color:var(--accent); font-size:13px;
+}
+details.method[open] summary::before{transform:rotate(90deg);}
+details.method .body{padding-top:10px; font-size:13.5px; line-height:1.6; color:var(--text-secondary);}
+details.method .body p{margin:0 0 10px;}
+details.method .body p:last-child{margin-bottom:0;}
+details.method code{font-family:var(--mono); font-size:12.5px; background:var(--grid); padding:1px 5px; border-radius:4px;}
+
+section.card{
+  background:var(--surface); border:1px solid var(--border); border-radius:14px;
+  padding:20px 22px 16px; margin-top:22px;
+}
+section.card h2{
+  font-family:var(--serif); font-size:19px; font-weight:600; margin:0 0 4px;
+}
+section.card .sub{font-size:13px; color:var(--text-muted); margin:0 0 14px;}
+
+.legend{display:flex; flex-wrap:wrap; gap:16px; align-items:center; margin:2px 0 14px; font-size:13px; color:var(--text-secondary);}
+.legend .item{display:flex; align-items:center; gap:7px;}
+.legend .swatch{width:12px; height:12px; border-radius:50%; display:inline-block; flex:none;}
+.legend .swatch.voter{background:var(--voter);}
+.legend .swatch.nonvoter{background:var(--nonvoter);}
+.legend .swatch.voter-avg{background:none; border:2px solid var(--voter);}
+.legend .swatch.nonvoter-avg{background:none; border:2px solid var(--nonvoter);}
+.legend .note{color:var(--text-muted); font-style:italic;}
+
+.chart-scroll{overflow-x:auto; margin:0 -4px; padding:0 4px 4px;}
+.chart-scroll svg{min-width:980px; width:100%; height:auto; display:block; font-family:var(--sans);}
+
+.svg-axis-label{fill:var(--text-muted); font-size:12px;}
+.svg-col-label{fill:var(--text-primary); font-size:13px; font-weight:600;}
+.svg-grid{stroke:var(--grid); stroke-width:1;}
+.svg-path{fill:none; stroke-width:1.4; opacity:.28; transition:opacity .15s ease, stroke-width .15s ease;}
+.svg-path.hot{opacity:.95; stroke-width:2.2;}
+.svg-path.dim{opacity:.08;}
+.dot{stroke:var(--surface); stroke-width:1.5; cursor:pointer; transition:r .12s ease;}
+.dot.dim{opacity:.22;}
+.dot-initials{font-family:var(--mono); font-size:9px; font-weight:500; fill:#fff; text-anchor:middle; dominant-baseline:central; pointer-events:none; letter-spacing:-0.02em;}
+.avg-dot{fill:var(--surface); stroke-width:2.75; cursor:pointer;}
+.avg-path{fill:none; stroke-width:2; stroke-dasharray:2 4; opacity:.85;}
+.avg-label{font-family:var(--mono); font-size:10.5px; font-weight:600; text-anchor:middle;}
+.avg-label.voter{fill:var(--voter);}
+.avg-label.nonvoter{fill:var(--nonvoter);}
+
+.tooltip{
+  position:fixed; z-index:40; pointer-events:none; max-width:240px;
+  background:var(--surface-raised); border:1px solid var(--border); border-radius:10px;
+  padding:10px 12px; font-size:12.5px; line-height:1.45; color:var(--text-primary);
+  box-shadow:0 8px 24px rgba(0,0,0,0.18); opacity:0; transform:translateY(4px);
+  transition:opacity .12s ease, transform .12s ease;
+}
+.tooltip.show{opacity:1; transform:translateY(0);}
+.tooltip .t-name{font-weight:600; font-size:13px; margin-bottom:2px;}
+.tooltip .t-role{color:var(--text-secondary); margin-bottom:6px;}
+.tooltip .t-status{display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.03em; padding:2px 7px; border-radius:5px; margin-bottom:6px;}
+.tooltip .t-status.voter{background:var(--voter-soft); color:var(--voter);}
+.tooltip .t-status.nonvoter{background:var(--nonvoter-soft); color:var(--nonvoter);}
+.tooltip .t-quote{color:var(--text-secondary); font-style:italic; border-left:2px solid var(--grid); padding-left:8px;}
+.tooltip .t-val{font-family:var(--mono); color:var(--text-primary); margin-top:6px;}
+
+.table-scroll{overflow-x:auto;}
+table.roster{width:100%; border-collapse:collapse; font-size:13px; min-width:760px;}
+table.roster th, table.roster td{text-align:left; padding:8px 10px; border-bottom:1px solid var(--grid); white-space:nowrap;}
+table.roster th{font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:var(--text-muted); font-weight:600;}
+table.roster td.num{font-family:var(--mono); font-variant-numeric:tabular-nums; color:var(--text-secondary);}
+table.roster td.year-voter{color:var(--voter); font-weight:600;}
+table.roster td.year-nonvoter{color:var(--nonvoter);}
+table.roster td.name{font-weight:600; white-space:normal;}
+table.roster td.role{color:var(--text-secondary); white-space:normal; font-size:12.5px;}
+table.roster tr:hover{background:var(--grid);}
+.status-pill{display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:600; padding:2px 8px; border-radius:20px;}
+.status-pill.voter{background:var(--voter-soft); color:var(--voter);}
+.status-pill.nonvoter{background:var(--nonvoter-soft); color:var(--nonvoter);}
+.status-pill .dotmark{width:6px; height:6px; border-radius:50%; background:currentColor;}
+
+footer.caveats{margin-top:26px; font-size:12.5px; line-height:1.6; color:var(--text-muted);}
+footer.caveats ul{margin:8px 0 0; padding-left:18px;}
+footer.caveats li{margin-bottom:6px;}
+
+@media (max-width: 560px){
+  h1{font-size:26px;}
+  section.card{padding:16px 14px;}
+  .legend{gap:12px;}
+}
+</style>
+
+<div class="wrap">
+  <header class="page">
+    <p class="eyebrow">Educated guesswork &middot; September 2026 FOMC projections</p>
+    <h1>Dot Plot Detective</h1>
+    <p class="lede">The Fed never says which dot belongs to which official. Based on everything each FOMC participant has said in public since the last meeting, here's an informed attempt to put names on the September 16, 2026 Summary of Economic Projections &mdash; and trace where each inferred voice sits through 2029.</p>
+    <details class="method">
+      <summary>How this was built, and how much to trust it</summary>
+      <div class="body">
+        <p>The Fed publishes only the <em>count</em> of participants at each rate level, never the names. Eighteen of nineteen participants submitted a dot (Chair <strong>Warsh</strong> opted out for a second straight meeting); one of those eighteen skipped the 2028&ndash;2029 columns.</p>
+        <p>This page ranks all 18 dot-submitters from most to least hawkish, using direct quotes and reported remarks gathered from Fed and regional-bank speech pages, wire coverage, and interviews between the September 16 hike and October 16 (the day before blackout). The rank is then mapped mechanically onto the real published counts at each level, for every column &mdash; the 4 most hawkish voices fill the 4 dots at 4.375% for 2026, and so on down the ranking.</p>
+        <p>That makes the chart internally consistent, not independently verified. The Fed has never confirmed a single name on this chart. Treat every placement as a labeled guess, strongest for 2026 (where there's the most public commentary to go on) and progressively softer further out &mdash; <code>2028&ndash;2029</code> in particular rest on thin evidence.</p>
+        <p>Dot color and the two hollow averages both use each column's <em>actual</em> voting roster for that year, not a fixed snapshot. The four rotating seats cycle through fixed groups of regional banks &mdash; Boston/Philadelphia/Richmond, Cleveland/Chicago, Atlanta/St.&nbsp;Louis/Dallas, and San&nbsp;Francisco/Kansas&nbsp;City/Minneapolis, one seat each &mdash; on a clock the Fed itself publishes. 2026's roster matches the Board's own "2026 Committee Members" list, and 2027&ndash;2029 match its "Federal Reserve Bank Rotation on the FOMC" table exactly (<a href="https://www.federalreserve.gov/monetarypolicy/fomc.htm" target="_blank" rel="noopener">federalreserve.gov/monetarypolicy/fomc.htm</a>). That part isn't a guess. Longer run isn't tied to any single year's committee, so no average is shown for it, and any dot in that column keeps 2026's color as a fallback label only.</p>
+        <p><strong>Revised Oct 19, 2026:</strong> the first version of this ranking came almost entirely from this page's own reading of speeches. That missed things an independent cross-check against FedChirp (numeric hawk/dove scoring), Helious, MNI's Hawk-Dove Spectrum, and primary wire coverage caught. Four placements moved meaningfully: <strong>Bowman</strong> went from a guessed "leaning hawkish" (no in-window quote at all) to the single most dovish person on this page &mdash; MNI calls her "the former hawk turned clear dove," and she reportedly penciled in three 2026 cuts against the Committee's median of one. <strong>Jefferson</strong> moved the opposite direction, from "most dovish" to solidly hawkish-leaning: his widely-quoted "may take more time" line was about delaying a further hike, not resisting one, and the same speech called inflation risk "tilted to the upside." <strong>Kashkari</strong> and <strong>Paulson</strong> both moved up into the top hawkish tier &mdash; Kashkari dissented <em>for</em> a hike in July 2026 alongside Logan and Hammack, a vote that outweighs his later hedging on October's timing, and Paulson's single scored speech (+1.70) actually out-hawked Hammack's (+1.60). <strong>Goolsbee</strong> moved up from "2nd-most dovish" to the mildly-hawkish middle, per the correction described above. Every other placement held up under the cross-check.</p>
+        <p><strong>On the 2027 gap specifically:</strong> this revision made it <em>wider</em>, not narrower. Because Kashkari and Paulson are now ranked among the top hawks and both rotate off the committee in 2027 too, the 2027 voter average (3.92%) now sits about 45 basis points below the non-voter average (4.375%) &mdash; up from 33bp in the first version. The underlying mechanism is independently noticed: Jack Fagan, CFA, at Osborne Partners wrote on October 4, 2026 that the incoming 2027 roster "looks less hawkish than 2026, but only modestly so," naming the same rotation (Logan and Hammack out, Goolsbee and Barkin in) with Atlanta's vacant seat as the wildcard &mdash; see <a href="https://osbornepartners.com/the-hawks-take-flight/" target="_blank" rel="noopener">"The Hawks Take Flight"</a>. His "modestly" and this chart's 45-basis-point gap disagree even more now than before. Treat the direction of the gap as corroborated by independent reporting, the size of it as this chart's own construction &mdash; and a construction that got more extreme, not less, the harder it was checked.</p>
+      </div>
+    </details>
+  </header>
+
+  <section class="card">
+    <h2>Who's behind the dots</h2>
+    <p class="sub">Each line traces one inferred speaker across the five SEP horizons. Hover or tap a dot to follow it.</p>
+    <div class="legend">
+      <span class="item"><span class="swatch voter"></span>FOMC voter that year</span>
+      <span class="item"><span class="swatch nonvoter"></span>Non-voter that year</span>
+      <span class="item"><span class="swatch voter-avg"></span>Voter average</span>
+      <span class="item"><span class="swatch nonvoter-avg"></span>Non-voter average</span>
+      <span class="item note">Every dot is colored by whether that person votes in that dot's own year &mdash; the same person can be green in 2026 and red in 2027. The thin connecting line just traces one person; it stays neutral since their own color can change column to column.</span>
+    </div>
+    <div class="chart-scroll">
+      <svg id="chart" viewBox="0 0 1220 460" role="img" aria-label="Dot plot with inferred speaker attribution, 2026 through longer run"></svg>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Full roster &amp; basis for placement</h2>
+    <p class="sub">Sorted hawkish to dovish. Projected midpoint of the target range, percent.</p>
+    <div class="table-scroll">
+      <table class="roster" id="roster-table">
+        <thead>
+          <tr>
+            <th>Rank</th><th>Name</th><th>Role</th><th>Votes in</th>
+            <th>2026</th><th>2027</th><th>2028</th><th>2029</th><th>Longer run</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="caveats">
+    <strong>Known limits of this reconstruction:</strong>
+    <ul>
+      <li>Powell left no public record at all in this window; independent trackers split evenly on him too, so his placement is a genuine coin-flip between neutral and mildly dovish. Bowman had no in-window quote either, but unlike Powell, independent reporting (MNI, FedChirp) gives a clear, confirmed dovish read on her 2026 stance, so her placement rests on that rather than a guess.</li>
+      <li>The 2028&ndash;2029 skip is attributed here to Atlanta's interim president Cheryl Venable, a plausible but unconfirmed guess &mdash; the Fed doesn't say who sat those out.</li>
+      <li>Voter/non-voter coloring and the two averages follow each year's actual rotating roster, confirmed against the Fed's own 2026 membership list and its published 2027&ndash;2029 rotation table &mdash; that part of the chart is fact, not inference. The Longer Run column has no roster of its own, so it isn't colored by rotation.</li>
+      <li>This is a model of relative hawkishness, not a leak. If the real roster ever surfaces, expect several names to move.</li>
+    </ul>
+  </footer>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  // name, initials, bank/role, values per column (null = no submission), basis quote
+  // Ranking cross-checked Oct 19, 2026 against independent trackers (FedChirp
+  // numeric scores, Helious hawk/dove/neutral labels, MNI's Hawk-Dove Spectrum,
+  // centralbank.watch) and primary-source coverage, not just this page's own
+  // reading of speeches. Several placements moved from the first version - see
+  // the methodology note below for what changed and why.
+  var people = [
+    {n:"Lorie Logan", init:"LL", role:"President, Dallas Fed",
+     v:{y26:4.375,y27:4.375,y28:4.125,y29:3.875,lr:3.875},
+     basis:"Pre-window: dissented for a hike in July, called for “50 basis points or more” beyond that — then went quiet after Oct 2. FedChirp's highest score of anyone tracked (+1.90)."},
+    {n:"Beth Hammack", init:"BH", role:"President, Cleveland Fed",
+     v:{y26:4.375,y27:4.375,y28:4.125,y29:3.875,lr:3.875},
+     basis:"“More tightness is needed in the economy” (Barron's, Oct 11–13); “a restrictive monetary policy stance is appropriate” (NABE speech, Oct 12). MNI names her among the Committee's “biggest 3 hawks.”"},
+    {n:"Jeffrey Schmid", init:"JS", role:"President, Kansas City Fed",
+     v:{y26:4.375,y27:4.375,y28:4.125,y29:3.875,lr:3.750},
+     basis:"Consistently hawkish all window: inflation is an “economic thief,” the fight “has a way to go,” Fed credibility “at stake.” FedChirp's 2nd-highest score (+1.85)."},
+    {n:"Alberto Musalem", init:"AM", role:"President, St. Louis Fed",
+     v:{y26:4.375,y27:4.375,y28:4.125,y29:3.625,lr:3.625},
+     basis:"“Earlier and incremental policy firming is better... than later and larger”; sees rates “going up further” over 6–9 months. Hardened sharply over 2026 per independent coverage."},
+    {n:"Anna Paulson", init:"AP", role:"President, Philadelphia Fed",
+     v:{y26:4.125,y27:4.375,y28:3.875,y29:3.625,lr:3.625},
+     basis:"Hawkish shift from a prior moderate stance: inflation “remains stubbornly elevated.” FedChirp scored her Sept 24 speech +1.70 — higher than Hammack's — putting her in the top tier, not just “leaning.”"},
+    {n:"Neel Kashkari", init:"NK", role:"President, Minneapolis Fed",
+     v:{y26:4.125,y27:4.375,y28:3.875,y29:3.625,lr:3.500},
+     basis:"Dissented FOR a 25bp hike at the July 2026 meeting alongside Logan and Hammack (a 9-3 vote) — a concrete hawkish action his later “open-minded” October hedging on timing doesn't erase."},
+    {n:"Michael Barr", init:"MB", role:"Governor",
+     v:{y26:4.125,y27:4.375,y28:3.875,y29:3.625,lr:3.500},
+     basis:"“Further policy adjustments are likely to be needed... in a timely fashion” (Sept 23) — pushed October-hike odds toward 70%. FedChirp's highest score among governors (+1.40)."},
+    {n:"Susan Collins", init:"SC", role:"President, Boston Fed",
+     v:{y26:4.125,y27:4.375,y28:3.875,y29:3.625,lr:3.375},
+     basis:"“Appropriate to raise rates a bit further before the end of the year,” conditioned on “the totality of incoming data.” FedChirp ranks her 5th of 11 tracked hawks (+1.50)."},
+    {n:"Christopher Waller", init:"CW", role:"Governor",
+     v:{y26:4.125,y27:4.125,y28:3.875,y29:3.625,lr:3.250},
+     basis:"“I anticipate additional hikes” — but they “do not need to come at consecutive meetings.” Independent coverage (HousingWire, Bloomberg) frames this as a notable hawkish turn: “the Fed loses one of its few doves.”"},
+    {n:"Lisa Cook", init:"LC", role:"Governor",
+     v:{y26:4.125,y27:4.125,y28:3.625,y29:3.625,lr:3.250},
+     basis:"More assertively hawkish on closer reading: “ready to take action by raising interest rates if necessary” (Aug 5) and inflation “an unacceptable burden” (Jul 15). FedChirp's 2nd-highest governor score (+1.23)."},
+    {n:"Austan Goolsbee", init:"AG", role:"President, Chicago Fed",
+     v:{y26:4.125,y27:4.125,y28:3.625,y29:3.375,lr:3.125},
+     basis:"2026 trackers (FedChirp +0.50, a hawk/dove roundup calling him “hawkish on timing”) and his own June CNBC line — “clearly the problem's on the inflation side” — cut against the dovish reputation he carried through 2025."},
+    {n:"Philip Jefferson", init:"PJ", role:"Governor, Vice Chair",
+     v:{y26:4.125,y27:4.125,y28:3.625,y29:3.375,lr:3.000},
+     basis:"His Oct 1 “may take more time” line was about pausing a further hike, not resisting one — the same speech called inflation risk “tilted to the upside” and signaled “no urgency for another hike.” FedChirp scores him hawkish-side (+1.10)."},
+    {n:"Tom Barkin", init:"TB", role:"President, Richmond Fed",
+     v:{y26:4.125,y27:4.125,y28:3.375,y29:3.125,lr:3.000},
+     basis:"“Headline... core... all underlying inflation metrics are also elevated”; questioned the “temporary factors” framing. FedChirp's lowest-scored hawk (+0.95) — hawkish, but the mildest of that tier."},
+    {n:"John Williams", init:"JW", role:"President, New York Fed",
+     v:{y26:4.125,y27:4.125,y28:3.125,y29:3.125,lr:3.000},
+     basis:"“No need for urgency” on October, yet “one further... adjustment... may be appropriate late this year.” Press consistently calls him the Committee's centrist, not a dove."},
+    {n:"Cheryl Venable", init:"CV", role:"Interim President, Atlanta Fed",
+     v:{y26:4.125,y27:3.625,y28:null,y29:null,lr:3.000},
+     basis:"Her essay says inflation is “too high,” but Reuters notes she “did not express an opinion about whether a rate increase is needed” — the most genuinely uncommitted record on the committee. Guessed as the one who skipped 2028–29."},
+    {n:"Jerome Powell", init:"JP", role:"Governor (former Chair)",
+     v:{y26:4.125,y27:3.625,y28:3.125,y29:3.125,lr:3.000},
+     basis:"No public remarks found anywhere in this window. Trackers split evenly between neutral and mildly dovish — a guess either way."},
+    {n:"Mary Daly", init:"MD", role:"President, San Francisco Fed",
+     v:{y26:3.875,y27:3.625,y28:3.125,y29:3.125,lr:3.000},
+     basis:"“I don't feel urgent that we have to decide with a limited set of information” (Reuters, Oct 15, confirmed verbatim). MNI independently places her more dovish than Goolsbee."},
+    {n:"Michelle Bowman", init:"MWB", role:"Governor, Vice Chair for Supervision",
+     v:{y26:3.875,y27:3.125,y28:3.125,y29:2.875,lr:2.875},
+     basis:"MNI calls her “the former hawk turned clear dove”; reportedly penciled in three 2026 rate cuts versus the Committee's median of one. FedChirp's only negative, dovish-side score among governors (−0.50)."}
+  ];
+
+  var cols = [
+    {key:"y26", x:160, label:"2026"},
+    {key:"y27", x:400, label:"2027"},
+    {key:"y28", x:640, label:"2028"},
+    {key:"y29", x:880, label:"2029"},
+    {key:"lr",  x:1120, label:"Longer run"}
+  ];
+
+  // Confirmed directly from federalreserve.gov/monetarypolicy/fomc.htm: the
+  // 2026 roster matches the Board's own "2026 Committee Members" list, and
+  // 2027-2029 match its "Federal Reserve Bank Rotation on the FOMC" table
+  // exactly (Boston/Philadelphia/Richmond, Cleveland/Chicago, Atlanta/St.
+  // Louis/Dallas, and Minneapolis/Kansas City/San Francisco each rotate one
+  // seat on a fixed clock). Governors + the NY Fed president vote every year.
+  var ALWAYS_VOTE = ["Williams","Jefferson","Bowman","Barr","Cook","Powell","Waller"];
+  var votersByYear = {
+    y26: ALWAYS_VOTE.concat(["Hammack","Paulson","Logan","Kashkari"]),
+    y27: ALWAYS_VOTE.concat(["Goolsbee","Barkin","Venable","Daly"]),
+    y28: ALWAYS_VOTE.concat(["Hammack","Collins","Musalem","Schmid"]),
+    y29: ALWAYS_VOTE.concat(["Goolsbee","Paulson","Logan","Kashkari"])
+  };
+  // "Longer run" isn't tied to one year's roster, so for any per-dot coloring
+  // on that column we fall back to the 2026 (current) roster.
+  function isVoterInYear(personName, colKey){
+    var surname = personName.split(" ").pop();
+    var roster = votersByYear[colKey] || votersByYear.y26;
+    return roster.indexOf(surname) !== -1;
+  }
+
+  var MIN=2.875, MAX=4.375, STEP=0.125;
+  var Y_TOP=56, Y_BOT=400;
+  function yFor(v){
+    var frac = (MAX - v) / (MAX - MIN);
+    return Y_TOP + frac * (Y_BOT - Y_TOP);
+  }
+
+  var svg = document.getElementById("chart");
+  var NS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs){
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  // gridlines + axis labels
+  var levels = [];
+  for (var lv = MAX; lv >= MIN - 0.001; lv -= STEP) levels.push(Math.round(lv*1000)/1000);
+  levels.forEach(function(lv){
+    var y = yFor(lv);
+    svg.appendChild(el("line", {x1:70, x2:1180, y1:y, y2:y, class:"svg-grid"}));
+    var t = el("text", {x:60, y:y+4, class:"svg-axis-label", "text-anchor":"end"});
+    t.textContent = lv.toFixed(3);
+    svg.appendChild(t);
+  });
+
+  // column labels
+  cols.forEach(function(c){
+    var t = el("text", {x:c.x, y:30, class:"svg-col-label", "text-anchor":"middle"});
+    t.textContent = c.label;
+    svg.appendChild(t);
+  });
+
+  // dodge: group people by column+value to spread overlapping dots horizontally
+  function dodgeX(colKey, baseX){
+    var groups = {};
+    people.forEach(function(p, i){
+      var v = p.v[colKey];
+      if (v==null) return;
+      var key = v.toFixed(3);
+      groups[key] = groups[key] || [];
+      groups[key].push(i);
+    });
+    var offsets = {};
+    Object.keys(groups).forEach(function(key){
+      var idxs = groups[key];
+      var n = idxs.length;
+      idxs.forEach(function(idx, j){
+        offsets[idx + "|" + key] = (j - (n-1)/2) * 13;
+      });
+    });
+    return function(idx, v){
+      if (v==null) return null;
+      return baseX + (offsets[idx + "|" + v.toFixed(3)] || 0);
+    };
+  }
+  var dodgers = {};
+  cols.forEach(function(c){ dodgers[c.key] = dodgeX(c.key, c.x); });
+
+  // paths (slope lines) first, so dots render above. The line just traces one
+  // person; it's neutral because their own color can change column to column.
+  var pathEls = [];
+  people.forEach(function(p, i){
+    var pts = [];
+    cols.forEach(function(c){
+      var v = p.v[c.key];
+      if (v==null) return;
+      var x = dodgers[c.key](i, v);
+      pts.push(x + "," + yFor(v));
+    });
+    var path = el("path", {
+      d: "M" + pts.join(" L"),
+      class: "svg-path",
+      stroke: "var(--axis)",
+      "data-idx": i
+    });
+    svg.appendChild(path);
+    pathEls.push(path);
+  });
+
+  // dots - colored by whether THIS PERSON votes in THIS COLUMN's year, not
+  // a fixed status. Same person can be green in one column and red in the next.
+  var dotEls = [];
+  people.forEach(function(p, i){
+    cols.forEach(function(c){
+      var v = p.v[c.key];
+      if (v==null) return;
+      var votesThisYear = isVoterInYear(p.n, c.key);
+      var x = dodgers[c.key](i, v);
+      var y = yFor(v);
+      var g = el("g", {"data-idx":i});
+      var circle = el("circle", {
+        cx:x, cy:y, r:10, class:"dot",
+        fill: votesThisYear ? "#0ca30c" : "#d03b3b"
+      });
+      var label = el("text", {x:x, y:y+0.5, class:"dot-initials"});
+      label.textContent = p.init.length>2 ? p.init.slice(0,2) : p.init;
+      g.appendChild(circle);
+      g.appendChild(label);
+      svg.appendChild(g);
+      dotEls.push({g:g, idx:i, circle:circle});
+
+      g.addEventListener("mouseenter", function(){ showTip(i, x, y, c.key, votesThisYear); highlight(i); });
+      g.addEventListener("mouseleave", function(){ hideTip(); unhighlight(); });
+      g.addEventListener("click", function(){ showTip(i, x, y, c.key, votesThisYear); highlight(i); });
+    });
+  });
+
+  // voter / non-voter averages, using that column's actual rotating roster
+  // (longer run has no single-year roster, so it's left out)
+  var avgCols = cols.filter(function(c){ return c.key !== "lr"; });
+  function groupAverage(colKey, wantVoters){
+    var vals = [];
+    people.forEach(function(p){
+      var v = p.v[colKey];
+      if (v==null) return;
+      if (isVoterInYear(p.n, colKey) === wantVoters) vals.push(v);
+    });
+    if (!vals.length) return null;
+    var sum = 0; for (var k=0;k<vals.length;k++) sum += vals[k];
+    return {avg: sum/vals.length, n: vals.length};
+  }
+
+  var AVG_X_OFFSET = 95;
+  var avgSeries = {voter: [], nonvoter: []};
+  avgCols.forEach(function(c){
+    var va = groupAverage(c.key, true);
+    var na = groupAverage(c.key, false);
+    if (va) avgSeries.voter.push({x:c.x+AVG_X_OFFSET, y:yFor(va.avg), val:va.avg, n:va.n, key:c.key});
+    if (na) avgSeries.nonvoter.push({x:c.x+AVG_X_OFFSET, y:yFor(na.avg), val:na.avg, n:na.n, key:c.key});
+  });
+
+  var avgEls = [];
+  function renderAvgSeries(kind, points, colorVar, label, labelDy){
+    if (points.length > 1){
+      var d = "M" + points.map(function(p){ return p.x+","+p.y; }).join(" L");
+      svg.appendChild(el("path", {d:d, class:"avg-path", stroke:colorVar}));
+    }
+    points.forEach(function(p){
+      var g = el("g", {});
+      var circle = el("circle", {cx:p.x, cy:p.y, r:9, class:"avg-dot", stroke:colorVar});
+      var valueLabel = el("text", {x:p.x, y:p.y+labelDy, class:"avg-label "+kind});
+      valueLabel.textContent = p.val.toFixed(2)+"%";
+      g.appendChild(circle);
+      g.appendChild(valueLabel);
+      svg.appendChild(g);
+      avgEls.push({g:g, kind:kind});
+      g.addEventListener("mouseenter", function(){ showAvgTip(kind, label, p); });
+      g.addEventListener("mouseleave", hideTip);
+      g.addEventListener("click", function(){ showAvgTip(kind, label, p); });
+    });
+  }
+  renderAvgSeries("voter", avgSeries.voter, "#0ca30c", "Voter average", -17);
+  renderAvgSeries("nonvoter", avgSeries.nonvoter, "#d03b3b", "Non-voter average", 23);
+
+  function showAvgTip(kind, label, p){
+    var statusClass = kind==="voter" ? "voter" : "nonvoter";
+    tip.innerHTML =
+      '<div class="t-name">'+label+'</div>' +
+      '<div class="t-status '+statusClass+'">'+p.n+' participant'+(p.n===1?'':'s')+' averaged</div>' +
+      '<div class="t-quote">Average of everyone with a dot who '+(kind==="voter"?"votes":"doesn’t vote")+' on the FOMC in '+colLabelByKey[p.key]+', using that year’s actual rotating roster.</div>' +
+      '<div class="t-val">'+colLabelByKey[p.key]+': '+p.val.toFixed(2)+'%</div>';
+    tip.classList.add("show");
+    positionTip(p.x, p.y);
+  }
+
+  function highlight(idx){
+    pathEls.forEach(function(p){
+      var pidx = +p.getAttribute("data-idx");
+      p.classList.toggle("hot", pidx===idx);
+      p.classList.toggle("dim", pidx!==idx);
+    });
+    dotEls.forEach(function(d){
+      d.g.style.opacity = (d.idx===idx) ? "1" : "0.35";
+    });
+    avgEls.forEach(function(a){ a.g.style.opacity = "0.35"; });
+  }
+  function unhighlight(){
+    pathEls.forEach(function(p){ p.classList.remove("hot","dim"); });
+    dotEls.forEach(function(d){ d.g.style.opacity = "1"; });
+    avgEls.forEach(function(a){ a.g.style.opacity = "1"; });
+  }
+
+  var tip = document.getElementById("tooltip");
+  var colLabelByKey = {y26:"2026", y27:"2027", y28:"2028", y29:"2029", lr:"Longer run"};
+  function showTip(idx, x, y, colKey, votesThisYear){
+    var p = people[idx];
+    var yearLabel = colLabelByKey[colKey];
+    var statusText = colKey==="lr"
+      ? (votesThisYear ? "2026 voter" : "2026 non-voter") + " (longer run isn’t tied to a year)"
+      : (votesThisYear ? "Votes in " + yearLabel : "Doesn’t vote in " + yearLabel);
+    tip.innerHTML =
+      '<div class="t-name">'+p.n+'</div>' +
+      '<div class="t-role">'+p.role+'</div>' +
+      '<div class="t-status '+(votesThisYear?'voter':'nonvoter')+'">'+statusText+'</div>' +
+      '<div class="t-quote">'+p.basis+'</div>' +
+      '<div class="t-val">'+yearLabel+': '+p.v[colKey].toFixed(3)+'%</div>';
+    tip.classList.add("show");
+    positionTip(x, y);
+  }
+  function hideTip(){ tip.classList.remove("show"); }
+  function positionTip(svgX, svgY){
+    var rect = svg.getBoundingClientRect();
+    var scale = rect.width / 1220;
+    var px = rect.left + svgX*scale;
+    var py = rect.top + svgY*scale;
+    var tw = 240, pad = 14;
+    var left = px + 16, top = py - 10;
+    if (left + tw > window.innerWidth - pad) left = px - tw - 16;
+    if (top < pad) top = pad;
+    tip.style.left = left + "px";
+    tip.style.top = top + "px";
+  }
+
+  // roster table, sorted by rank (already in hawkish->dovish order in `people`)
+  var tbody = document.querySelector("#roster-table tbody");
+  people.forEach(function(p, i){
+    var tr = document.createElement("tr");
+    function td(html, cls){ var c=document.createElement("td"); if(cls) c.className=cls; c.innerHTML=html; return c; }
+    tr.appendChild(td(String(i+1), "num"));
+    tr.appendChild(td(p.n, "name"));
+    tr.appendChild(td(p.role, "role"));
+    var yearKeys = ["y26","y27","y28","y29"];
+    var yearLabels = {y26:"'26", y27:"'27", y28:"'28", y29:"'29"};
+    var votesIn = yearKeys.filter(function(k){ return isVoterInYear(p.n, k); }).map(function(k){ return yearLabels[k]; });
+    var pillClass = votesIn.length ? "voter" : "nonvoter";
+    var pillText = votesIn.length ? votesIn.join(", ") : "none of 2026–29";
+    tr.appendChild(td('<span class="status-pill '+pillClass+'"><span class="dotmark"></span>'+pillText+'</span>'));
+    yearKeys.concat(["lr"]).forEach(function(k){
+      var v = p.v[k];
+      if (v==null){ tr.appendChild(td("&mdash;", "num")); return; }
+      var cls = "num";
+      if (k !== "lr") cls += isVoterInYear(p.n, k) ? " year-voter" : " year-nonvoter";
+      tr.appendChild(td(v.toFixed(3), cls));
+    });
+    tbody.appendChild(tr);
+  });
+})();
+</script>
