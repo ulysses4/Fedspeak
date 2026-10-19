@@ -100,6 +100,7 @@ section.card .sub{font-size:13px; color:var(--text-muted); margin:0 0 14px;}
 .legend .swatch.nonvoter{background:var(--nonvoter);}
 .legend .swatch.voter-avg{background:none; border:2px solid var(--voter);}
 .legend .swatch.nonvoter-avg{background:none; border:2px solid var(--nonvoter);}
+.legend .swatch.striped{background:repeating-linear-gradient(45deg, var(--voter) 0 3px, var(--nonvoter) 3px 6px);}
 .legend .note{color:var(--text-muted); font-style:italic;}
 
 .chart-scroll{overflow-x:auto; margin:0 -4px; padding:0 4px 4px;}
@@ -133,6 +134,7 @@ section.card .sub{font-size:13px; color:var(--text-muted); margin:0 0 14px;}
 .tooltip .t-status{display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.03em; padding:2px 7px; border-radius:5px; margin-bottom:6px;}
 .tooltip .t-status.voter{background:var(--voter-soft); color:var(--voter);}
 .tooltip .t-status.nonvoter{background:var(--nonvoter-soft); color:var(--nonvoter);}
+.tooltip .t-status.striped{background:var(--grid); color:var(--text-secondary);}
 .tooltip .t-quote{color:var(--text-secondary); font-style:italic; border-left:2px solid var(--grid); padding-left:8px;}
 .tooltip .t-val{font-family:var(--mono); color:var(--text-primary); margin-top:6px;}
 
@@ -215,7 +217,7 @@ footer.caveats li{margin-bottom:6px;}
         <p>The Fed publishes only the <em>count</em> of participants at each rate level, never the names. Eighteen of nineteen participants submitted a dot (Chair <strong>Warsh</strong> opted out for a second straight meeting); one of those eighteen skipped the 2028&ndash;2029 columns.</p>
         <p>This page ranks all 18 dot-submitters from most to least hawkish, using direct quotes and reported remarks gathered from Fed and regional-bank speech pages, wire coverage, and interviews between the September 16 hike and October 16 (the day before blackout). The rank is then mapped mechanically onto the real published counts at each level, for every column &mdash; the 4 most hawkish voices fill the 4 dots at 4.375% for 2026, and so on down the ranking.</p>
         <p>That makes the chart internally consistent, not independently verified. The Fed has never confirmed a single name on this chart. Treat every placement as a labeled guess, strongest for 2026 (where there's the most public commentary to go on) and progressively softer further out &mdash; <code>2028&ndash;2029</code> in particular rest on thin evidence.</p>
-        <p>Dot color and the two hollow averages both use each column's <em>actual</em> voting roster for that year, not a fixed snapshot. The four rotating seats cycle through fixed groups of regional banks &mdash; Boston/Philadelphia/Richmond, Cleveland/Chicago, Atlanta/St.&nbsp;Louis/Dallas, and San&nbsp;Francisco/Kansas&nbsp;City/Minneapolis, one seat each &mdash; on a clock the Fed itself publishes. 2026's roster matches the Board's own "2026 Committee Members" list, and 2027&ndash;2029 match its "Federal Reserve Bank Rotation on the FOMC" table exactly (<a href="https://www.federalreserve.gov/monetarypolicy/fomc.htm" target="_blank" rel="noopener">federalreserve.gov/monetarypolicy/fomc.htm</a>). That part isn't a guess. Longer run isn't tied to any single year's committee, so no average is shown for it, and any dot in that column keeps 2026's color as a fallback label only.</p>
+        <p>Dot color and the two hollow averages both use each column's <em>actual</em> voting roster for that year, not a fixed snapshot. The four rotating seats cycle through fixed groups of regional banks &mdash; Boston/Philadelphia/Richmond, Cleveland/Chicago, Atlanta/St.&nbsp;Louis/Dallas, and San&nbsp;Francisco/Kansas&nbsp;City/Minneapolis, one seat each &mdash; on a clock the Fed itself publishes. 2026's roster matches the Board's own "2026 Committee Members" list, and 2027&ndash;2029 match its "Federal Reserve Bank Rotation on the FOMC" table exactly (<a href="https://www.federalreserve.gov/monetarypolicy/fomc.htm" target="_blank" rel="noopener">federalreserve.gov/monetarypolicy/fomc.htm</a>). That part isn't a guess. Longer run isn't tied to any single year's committee, so no average is shown for it. Individual dots in that column are handled differently too: the Board and the NY Fed president never rotate off, so their Longer Run dot stays solid; every other regional president's seat comes and goes, so theirs is striped green/red to say so rather than picking one color for a year that doesn't exist.</p>
         <p><strong>Revised Oct 19, 2026:</strong> the first version of this ranking came almost entirely from this page's own reading of speeches. That missed things an independent cross-check against FedChirp (numeric hawk/dove scoring), Helious, MNI's Hawk-Dove Spectrum, and primary wire coverage caught. Four placements moved meaningfully: <strong>Bowman</strong> went from a guessed "leaning hawkish" (no in-window quote at all) to the single most dovish person on this page &mdash; MNI calls her "the former hawk turned clear dove," and she reportedly penciled in three 2026 cuts against the Committee's median of one. <strong>Jefferson</strong> moved the opposite direction, from "most dovish" to solidly hawkish-leaning: his widely-quoted "may take more time" line was about delaying a further hike, not resisting one, and the same speech called inflation risk "tilted to the upside." <strong>Kashkari</strong> and <strong>Paulson</strong> both moved up into the top hawkish tier &mdash; Kashkari dissented <em>for</em> a hike in July 2026 alongside Logan and Hammack, a vote that outweighs his later hedging on October's timing, and Paulson's single scored speech (+1.70) actually out-hawked Hammack's (+1.60). <strong>Goolsbee</strong> moved up from "2nd-most dovish" to the mildly-hawkish middle, per the correction described above. Every other placement held up under the cross-check.</p>
         <p><strong>Revised again Oct 19, 2026, against ITC Markets:</strong> their "FOMC - ITC Hawk/Dove Analysis" cheat sheet (updated Oct 15, 2026) lists voter status for 2026&ndash;2028 for all 19 participants, and every single one of those checkmarks matched the Fed's own published rotation table exactly &mdash; a strong signal the rest of its hawk/dove calls are doing real work, not guessing. Where it agreed with this page (the top-4 hawks, Bowman as most dovish), nothing changed. Where it disagreed hard, this page deferred to it: <strong>Waller</strong> moved from "hawkish-leaning" (framed last revision as a notable hawkish turn) to 2nd-most dovish of 19 &mdash; the single largest reversal here. <strong>Paulson</strong> moved from the top hawkish tier back to 5th-most dovish, reversing last revision's read of her FedChirp score. <strong>Jefferson</strong> moved back toward dovish a second time, undoing the previous revision's hawkish read of his Oct 1 remarks. <strong>Barr</strong> and <strong>Daly</strong> both shifted a few places toward the center to split the difference between a single strong data point and this broader, verified source. <strong>Powell</strong> is handled differently from everyone else: rather than estimate a lean from thin evidence, he's placed deliberately dead-center (9th of 18) on the theory that avoiding a lean is itself his position, not a placeholder for missing data.</p>
         <p><strong>On the 2027 gap specifically:</strong> it survived both rounds of revision, currently sitting at about 40 basis points (voter average 3.94%, non-voter average 4.34%) &mdash; still wide, for a different mix of reasons than either earlier version. The underlying mechanism is independently noticed: Jack Fagan, CFA, at Osborne Partners wrote on October 4, 2026 that the incoming 2027 roster "looks less hawkish than 2026, but only modestly so," naming the same rotation (Logan and Hammack out, Goolsbee and Barkin in) with Atlanta's vacant seat as the wildcard &mdash; see <a href="https://osbornepartners.com/the-hawks-take-flight/" target="_blank" rel="noopener">"The Hawks Take Flight"</a>. Treat the direction of the gap as corroborated by independent reporting, the size of it as this chart's own construction, and that construction as still a work in progress &mdash; it has moved with each new source checked against it, and may move again.</p>
@@ -231,7 +233,8 @@ footer.caveats li{margin-bottom:6px;}
       <span class="item"><span class="swatch nonvoter"></span>Non-voter that year</span>
       <span class="item"><span class="swatch voter-avg"></span>Voter average</span>
       <span class="item"><span class="swatch nonvoter-avg"></span>Non-voter average</span>
-      <span class="item note">Every dot is colored by whether that person votes in that dot's own year &mdash; the same person can be green in 2026 and red in 2027. The thin connecting line just traces one person; it stays neutral since their own color can change column to column.</span>
+      <span class="item"><span class="swatch striped"></span>Longer run, rotating seat</span>
+      <span class="item note">Every dot is colored by whether that person votes in that dot's own year &mdash; the same person can be green in 2026 and red in 2027. In the Longer Run column, regional bank presidents are striped instead, since that seat rotates and isn't pinned to a year; only the Board and the NY Fed president (who never rotate off) get a solid Longer Run dot. The thin connecting line just traces one person; it stays neutral since their own color can change column to column.</span>
     </div>
     <div class="chart-scroll">
       <svg id="chart" viewBox="0 0 1220 460" role="img" aria-label="Dot plot with inferred speaker attribution, 2026 through longer run"></svg>
@@ -378,6 +381,23 @@ footer.caveats li{margin-bottom:6px;}
     return e;
   }
 
+  // Longer Run isn't tied to a single year's roster. A bank president's seat
+  // rotates on and off over time, so their Longer Run dot is striped
+  // (green/red) rather than solid - only the permanent voters (the Board and
+  // the NY Fed president, who never rotate off) get a solid Longer Run dot.
+  function isRotatingPresident(personName){
+    return ALWAYS_VOTE.indexOf(personName.split(" ").pop()) === -1;
+  }
+  var defs = el("defs", {});
+  var stripes = el("pattern", {
+    id:"lr-stripe", patternUnits:"userSpaceOnUse", width:7, height:7,
+    patternTransform:"rotate(45)"
+  });
+  stripes.appendChild(el("rect", {x:0, y:0, width:7, height:7, fill:"#0ca30c"}));
+  stripes.appendChild(el("rect", {x:0, y:0, width:3.5, height:7, fill:"#d03b3b"}));
+  defs.appendChild(stripes);
+  svg.appendChild(defs);
+
   // gridlines + axis labels
   var levels = [];
   for (var lv = MAX; lv >= MIN - 0.001; lv -= STEP) levels.push(Math.round(lv*1000)/1000);
@@ -453,10 +473,11 @@ footer.caveats li{margin-bottom:6px;}
       var votesThisYear = isVoterInYear(p.n, c.key);
       var x = dodgers[c.key](i, v);
       var y = yFor(v);
+      var isStriped = (c.key === "lr") && isRotatingPresident(p.n);
       var g = el("g", {"data-idx":i});
       var circle = el("circle", {
         cx:x, cy:y, r:10, class:"dot",
-        fill: votesThisYear ? "#0ca30c" : "#d03b3b"
+        fill: isStriped ? "url(#lr-stripe)" : (votesThisYear ? "#0ca30c" : "#d03b3b")
       });
       var label = el("text", {x:x, y:y+0.5, class:"dot-initials"});
       label.textContent = p.init.length>2 ? p.init.slice(0,2) : p.init;
@@ -551,13 +572,17 @@ footer.caveats li{margin-bottom:6px;}
   function showTip(idx, x, y, colKey, votesThisYear){
     var p = people[idx];
     var yearLabel = colLabelByKey[colKey];
-    var statusText = colKey==="lr"
-      ? (votesThisYear ? "2026 voter" : "2026 non-voter") + " (longer run isn’t tied to a year)"
-      : (votesThisYear ? "Votes in " + yearLabel : "Doesn’t vote in " + yearLabel);
+    var isStriped = (colKey === "lr") && isRotatingPresident(p.n);
+    var statusClass = isStriped ? "striped" : (votesThisYear ? "voter" : "nonvoter");
+    var statusText = isStriped
+      ? "Rotates on and off the vote — longer run can't pin a year"
+      : (colKey==="lr"
+          ? "Permanent voter — never rotates off"
+          : (votesThisYear ? "Votes in " + yearLabel : "Doesn’t vote in " + yearLabel));
     tip.innerHTML =
       '<div class="t-name">'+p.n+'</div>' +
       '<div class="t-role">'+p.role+'</div>' +
-      '<div class="t-status '+(votesThisYear?'voter':'nonvoter')+'">'+statusText+'</div>' +
+      '<div class="t-status '+statusClass+'">'+statusText+'</div>' +
       '<div class="t-quote">'+p.basis+'</div>' +
       '<div class="t-val">'+yearLabel+': '+p.v[colKey].toFixed(3)+'%</div>';
     tip.classList.add("show");
