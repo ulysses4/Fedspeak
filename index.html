@@ -1,5 +1,9 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Dot Plot Detective</title>
-<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -156,7 +160,49 @@ footer.caveats li{margin-bottom:6px;}
   section.card{padding:16px 14px;}
   .legend{gap:12px;}
 }
+
+.gate{
+  position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center;
+  background:var(--bg); padding:24px;
+}
+.gate[hidden]{display:none;}
+.gate-card{
+  width:100%; max-width:340px; background:var(--surface); border:1px solid var(--border);
+  border-radius:14px; padding:28px 24px; text-align:center;
+}
+.gate-lock{font-size:22px; margin-bottom:10px;}
+.gate-card h2{font-family:var(--serif); font-size:19px; font-weight:600; margin:0 0 6px;}
+.gate-card p{font-size:13px; color:var(--text-secondary); margin:0 0 18px; line-height:1.5;}
+.gate-form{display:flex; flex-direction:column; gap:10px;}
+.gate-input{
+  font-family:var(--mono); font-size:15px; padding:10px 12px; border-radius:8px;
+  border:1px solid var(--border); background:var(--bg); color:var(--text-primary);
+  text-align:center; letter-spacing:.04em;
+}
+.gate-input:focus{outline:2px solid var(--accent); outline-offset:1px;}
+.gate-submit{
+  font-family:var(--sans); font-size:14px; font-weight:600; padding:10px 12px;
+  border-radius:8px; border:none; background:var(--accent); color:#fff; cursor:pointer;
+}
+.gate-submit:hover{opacity:.92;}
+.gate-error{font-size:12.5px; color:var(--nonvoter); min-height:16px; margin-top:2px;}
 </style>
+
+</head>
+<body>
+
+<div class="gate" id="gate">
+  <div class="gate-card">
+    <div class="gate-lock">&#128274;</div>
+    <h2>Dot Plot Detective</h2>
+    <p>This page is password-protected. Enter the password to continue.</p>
+    <form class="gate-form" id="gate-form">
+      <input type="password" id="gate-input" class="gate-input" placeholder="Password" autocomplete="off" autofocus>
+      <button type="submit" class="gate-submit">Unlock</button>
+      <div class="gate-error" id="gate-error"></div>
+    </form>
+  </div>
+</div>
 
 <div class="wrap">
   <header class="page">
@@ -555,3 +601,39 @@ footer.caveats li{margin-bottom:6px;}
   });
 })();
 </script>
+
+<script>
+(function(){
+  "use strict";
+  // Client-side only - not real security. Anyone who views source or the
+  // network tab can read this page's content regardless of this check.
+  // It exists to stop casual link-sharing, nothing more.
+  var PASSWORD = "gs16";
+  var gate = document.getElementById("gate");
+  var form = document.getElementById("gate-form");
+  var input = document.getElementById("gate-input");
+  var error = document.getElementById("gate-error");
+
+  function unlock(){
+    gate.hidden = true;
+    try { sessionStorage.setItem("fedspeak_unlocked", "1"); } catch(e){}
+  }
+
+  try {
+    if (sessionStorage.getItem("fedspeak_unlocked") === "1") unlock();
+  } catch(e){}
+
+  form.addEventListener("submit", function(e){
+    e.preventDefault();
+    if (input.value === PASSWORD){
+      unlock();
+    } else {
+      error.textContent = "Wrong password.";
+      input.value = "";
+      input.focus();
+    }
+  });
+})();
+</script>
+</body>
+</html>
