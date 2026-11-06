@@ -8,8 +8,38 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script src="vendor/d3.min.js"></script>
+<script>
+// Minimal TopoJSON -> GeoJSON feature decoder (subset of topojson-client, ISC).
+window.topojson = (function(){
+  function decodeArcs(topo){
+    const t = topo.transform, arcs = topo.arcs.map(arc=>{
+      let x=0,y=0; return arc.map(p=>{ if(t){ x+=p[0]; y+=p[1]; return [x*t.scale[0]+t.translate[0], y*t.scale[1]+t.translate[1]]; } return [p[0],p[1]]; });
+    });
+    return arcs;
+  }
+  function ring(arcs, idxs){
+    const out=[];
+    idxs.forEach(i=>{ let a = i<0 ? arcs[~i].slice().reverse() : arcs[i]; if(out.length) a=a.slice(1); out.push(...a); });
+    return out;
+  }
+  function geom(arcs, g){
+    const T=g.type;
+    if(T==='Polygon') return {type:T, coordinates:g.arcs.map(r=>ring(arcs,r))};
+    if(T==='MultiPolygon') return {type:T, coordinates:g.arcs.map(p=>p.map(r=>ring(arcs,r)))};
+    if(T==='GeometryCollection') return {type:T, geometries:g.geometries.map(x=>geom(arcs,x))};
+    if(T==='LineString') return {type:T, coordinates:ring(arcs,g.arcs)};
+    if(T==='MultiLineString') return {type:T, coordinates:g.arcs.map(r=>ring(arcs,r))};
+    return null;
+  }
+  function feature(topo, obj){
+    const arcs = decodeArcs(topo);
+    const one = g => ({type:'Feature', id:g.id, properties:g.properties||{}, geometry:geom(arcs,g)});
+    return obj.type==='GeometryCollection' ? {type:'FeatureCollection', features:obj.geometries.map(one)} : one(obj);
+  }
+  return {feature};
+})();
+</script>
 <style>
 /* Companion to the Midterms AI Tracker. Severity is ordinal, so the map uses one
    hue light->dark (not a traffic light), with state labels, a legend and a table
@@ -186,7 +216,7 @@ td.num{font-family:var(--mono); text-align:right; white-space:nowrap;}
   try{
     const [r1, r2] = await Promise.all([
       fetch('map.enc.json?t=' + Date.now(), {cache:'no-store'}),
-      fetch('https://cdn.jsdelivr.net/npm/us-atlas@3.0.1/states-10m.json')
+      fetch('vendor/us-states-10m.json')
     ]);
     if(!r1.ok) throw new Error('map data ' + r1.status);
     if(!r2.ok) throw new Error('atlas ' + r2.status);
@@ -220,9 +250,9 @@ td.num{font-family:var(--mono); text-align:right; white-space:nowrap;}
 
   const S = data.states; // keyed by 2-letter
   const fipsToAbbr = {"01":"AL","02":"AK","04":"AZ","05":"AR","06":"CA","08":"CO","09":"CT","10":"DE","11":"DC","12":"FL","13":"GA","15":"HI","16":"ID","17":"IL","18":"IN","19":"IA","20":"KS","21":"KY","22":"LA","23":"ME","24":"MD","25":"MA","26":"MI","27":"MN","28":"MS","29":"MO","30":"MT","31":"NE","32":"NV","33":"NH","34":"NJ","35":"NM","36":"NY","37":"NC","38":"ND","39":"OH","40":"OK","41":"OR","42":"PA","44":"RI","45":"SC","46":"SD","47":"TN","48":"TX","49":"UT","50":"VT","51":"VA","53":"WA","54":"WV","55":"WI","56":"WY"};
-  const states = topojson.feature(topo, topo.objects.states).features.filter(f=>fipsToAbbr[f.id] && f.id!=='11');
-  const W=975, H=610;
-  const path = d3.geoPath();
+  const states = topojson.feature(topo, topo.objects.states).features.map(f=>{ f.id=String(f.id).padStart(2,'0'); return f; }).filter(f=>fipsToAbbr[f.id] && f.id!=='11');
+  const W=960, H=600;
+  const path = d3.geoPath(d3.geoAlbersUsa().fitSize([W,H], {type:'FeatureCollection', features:states}));
   const svg = d3.select('#map').append('svg').attr('viewBox',`0 0 ${W} ${H}`).attr('role','img').attr('aria-label','US map of AI data-center political risk by state');
   const g = svg.append('g');
   let view='tier', sel=null;
