@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Encrypt/decrypt midterms data for the GitHub Pages site.
 
-  MIDTERMS_PW=... python3 crypt.py encrypt   # data.json -> data.enc.json
-  MIDTERMS_PW=... python3 crypt.py decrypt   # data.enc.json -> data.json
+  MIDTERMS_PW=... python3 crypt.py encrypt [stem]   # <stem>.json -> <stem>.enc.json (default stem: data)
+  MIDTERMS_PW=... python3 crypt.py decrypt [stem]
 
 Format matches the page's WebCrypto code: PBKDF2-SHA256 (200k iters) -> AES-256-GCM.
 data.json is gitignored; only data.enc.json is committed.
@@ -13,8 +13,9 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PLAIN = os.path.join(HERE, "data.json")
-ENC = os.path.join(HERE, "data.enc.json")
+STEM = sys.argv[2] if len(sys.argv) > 2 else "data"
+PLAIN = os.path.join(HERE, STEM + ".json")
+ENC = os.path.join(HERE, STEM + ".enc.json")
 ITER = 200_000
 
 def key(pw: bytes, salt: bytes) -> bytes:
@@ -30,13 +31,13 @@ def main():
         ct = AESGCM(key(pw, salt)).encrypt(iv, open(PLAIN, "rb").read(), None)
         b64 = lambda b: base64.b64encode(b).decode()
         json.dump({"v": 1, "iter": ITER, "salt": b64(salt), "iv": b64(iv), "ct": b64(ct)}, open(ENC, "w"))
-        print("wrote data.enc.json")
+        print("wrote", os.path.basename(ENC))
     elif mode == "decrypt":
         e = json.load(open(ENC))
         d = lambda s: base64.b64decode(s)
         pt = AESGCM(key(pw, d(e["salt"]))).decrypt(d(e["iv"]), d(e["ct"]), None)
         open(PLAIN, "wb").write(pt)
-        print("wrote data.json")
+        print("wrote", os.path.basename(PLAIN))
     else:
         sys.exit("usage: crypt.py encrypt|decrypt")
 
