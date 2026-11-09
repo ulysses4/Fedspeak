@@ -90,6 +90,7 @@ section.card .sub{font-size:13px; color:var(--text-muted); margin:0 0 14px;}
 .legend{display:flex; flex-wrap:wrap; gap:14px 18px; align-items:center; margin:0 0 12px; font-size:13px; color:var(--text-secondary);}
 .legend .item{display:flex; align-items:center; gap:7px;}
 .legend .sw{width:16px; height:12px; border-radius:3px; border:1px solid var(--border); flex:none;}
+.sw.hatch{background:repeating-linear-gradient(45deg, var(--t4) 0 3px, var(--t2) 3px 6px); border-color:var(--t4);}
 .sw.t0{background:var(--t0);} .sw.t1{background:var(--t1);} .sw.t2{background:var(--t2);} .sw.t3{background:var(--t3);} .sw.t4{background:var(--t4);}
 .controls{display:flex; gap:8px; flex-wrap:wrap; margin:0 0 12px;}
 .controls button{font:inherit; font-size:12.5px; padding:5px 10px; border-radius:999px; border:1px solid var(--border); background:var(--surface-raised); color:var(--text-secondary); cursor:pointer;}
@@ -99,7 +100,7 @@ section.card .sub{font-size:13px; color:var(--text-muted); margin:0 0 14px;}
 .state{stroke:var(--surface); stroke-width:0.8; cursor:pointer; transition:filter .12s ease;}
 .state:hover, .state.sel{stroke:var(--text-primary); stroke-width:1.6; filter:brightness(1.05);}
 .state.dim{opacity:.35;}
-.slabel{font-family:var(--mono); font-size:9.5px; font-weight:500; text-anchor:middle; pointer-events:none; fill:var(--text-primary);}
+.slabel{font-family:var(--mono); font-size:9.5px; font-weight:500; text-anchor:middle; pointer-events:none; fill:var(--text-primary); paint-order:stroke; stroke:var(--surface); stroke-width:2.5px; stroke-linejoin:round;}
 .slabel.inv{fill:var(--t4-ink);} .slabel.inv1{fill:var(--t1-ink);} .slabel.inv2{fill:var(--t2-ink);} .slabel.inv3{fill:var(--t3-ink);}
 .tip{position:absolute; pointer-events:none; background:var(--surface-raised); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:12.5px; line-height:1.45; color:var(--text-primary); box-shadow:0 4px 14px rgba(0,0,0,.14); max-width:320px; display:none; z-index:2;}
 .tip b{font-weight:600;} .tip .m{color:var(--text-muted); font-family:var(--mono); font-size:11px;}
@@ -245,7 +246,8 @@ td.num{font-family:var(--mono); text-align:right; white-space:nowrap;}
   $('#stack-sub').textContent = data.stackNote || '';
 
   const TIERS = data.tiers; // [{n:0,label,desc}...]
-  $('#legend').innerHTML = TIERS.map(t=>`<span class="item"><span class="sw t${t.n}"></span>${esc(t.label)}</span>`).join('');
+  const HATCH = `<span class="item"><span class="sw hatch"></span>Hatched: an uncalled race could move the state to the hatched color</span>`;
+  $('#legend').innerHTML = TIERS.map(t=>`<span class="item"><span class="sw t${t.n}"></span>${esc(t.label)}</span>`).join('') + HATCH;
   $('#mech').innerHTML = (data.levers||[]).map(m=>`<div class="box"><h4>${esc(m.name)}</h4><p>${esc(m.desc)}</p><p class="who">${esc(m.who)} · ${esc(m.speed)}</p></div>`).join('');
   $('#stack tbody').innerHTML = (data.stack||[]).map(s=>`<tr><td><b>${esc(s.layer)}</b><br><span class="muted">${esc(s.names||'')}</span></td><td>${esc(s.exposure)}</td><td>${esc(s.direction)}</td><td>${esc(s.why)}</td></tr>`).join('');
 
@@ -261,23 +263,29 @@ td.num{font-family:var(--mono); text-align:right; white-space:nowrap;}
   const expoTier = s => { const gw=(s.gwOp||0)+(s.gwUc||0); return gw>=5?4:gw>=2?3:gw>=0.8?2:gw>0.1?1:0; };
   const timeTier = s => ({now:4, q1:3, '2027':2, later:1, none:0})[s.timingKey]||0;
   const tierOf = s => view==='tier'?s.tier:view==='exposure'?expoTier(s):timeTier(s);
-  const paths = g.selectAll('path').data(states).join('path')
+  const defs = svg.append('defs');
+  [1,2,3,4].forEach(n=>{ defs.append('pattern').attr('id','hatch'+n).attr('patternUnits','userSpaceOnUse').attr('width',7).attr('height',7).attr('patternTransform','rotate(45)').append('rect').attr('width',3).attr('height',7).attr('fill',`var(--t${n})`); });
+  const paths = g.selectAll('path.state').data(states).join('path')
     .attr('class','state').attr('d', path)
     .attr('fill', f=>{ const s=S[fipsToAbbr[f.id]]; return tierVar(s?tierOf(s):0); })
     .on('mousemove', (ev,f)=>{
       const ab=fipsToAbbr[f.id], s=S[ab]; const tip=$('#tip'), wrap=document.querySelector('.mapwrap');
-      tip.innerHTML = s ? `<b>${esc(s.name)}</b><span class="tierpill t${s.tier}">${esc(TIERS[s.tier].label)}</span><br>${esc(s.headline)}<br><span class="m">${s.gwOp||0} GW op · ${s.gwUc||0} GW u/c · ${s.gwPlan||0} GW planned · ${esc(s.lever)} · ${esc(s.timing)}</span>` : `<b>${ab}</b><br><span class="m">No material data-center buildout</span>`;
+      tip.innerHTML = s ? `<b>${esc(s.name)}</b><span class="tierpill t${s.tier}">${esc(TIERS[s.tier].label)}</span><br>${esc(s.headline)}${s.pending?`<br><i>Pending: ${esc(s.pendingNote||'')}</i>`:''}<br><span class="m">${s.gwOp||0} GW op · ${s.gwUc||0} GW u/c · ${s.gwPlan||0} GW planned · ${esc(s.lever)} · ${esc(s.timing)}</span>` : `<b>${ab}</b><br><span class="m">No material data-center buildout</span>`;
       tip.style.display='block'; const r=wrap.getBoundingClientRect(); let x=ev.clientX-r.left+14, y=ev.clientY-r.top+14; if(x+330>r.width) x=ev.clientX-r.left-330; tip.style.left=x+'px'; tip.style.top=y+'px';
     })
     .on('mouseleave', ()=> $('#tip').style.display='none')
     .on('click', (ev,f)=> select(fipsToAbbr[f.id]));
+  const hatch = g.selectAll('path.hatch').data(states.filter(f=>S[fipsToAbbr[f.id]] && S[fipsToAbbr[f.id]].pending)).join('path')
+    .attr('class','hatch').attr('d', path).attr('pointer-events','none')
+    .attr('fill', f=>`url(#hatch${S[fipsToAbbr[f.id]].pending})`).attr('stroke', f=>`var(--t${S[fipsToAbbr[f.id]].pending})`).attr('stroke-width',1.2).attr('stroke-dasharray','3 2');
   g.selectAll('text').data(states).join('text').attr('class', f=>{ const s=S[fipsToAbbr[f.id]]; return 'slabel'+(s?' inv'+(tierOf(s)>=4?'':tierOf(s)):''); })
     .attr('transform', f=>{ const c=path.centroid(f); return `translate(${c[0]},${c[1]+3})`; }).text(f=>fipsToAbbr[f.id]);
   function recolor(){
     paths.attr('fill', f=>{ const s=S[fipsToAbbr[f.id]]; return tierVar(s?tierOf(s):0); });
     g.selectAll('text').attr('class', f=>{ const s=S[fipsToAbbr[f.id]]; return 'slabel'+(s?' inv'+(tierOf(s)>=4?'':tierOf(s)):''); });
     const L = view==='tier'?TIERS: view==='exposure'?[{n:0,label:'<0.1 GW'},{n:1,label:'0.1–0.8 GW'},{n:2,label:'0.8–2 GW'},{n:3,label:'2–5 GW'},{n:4,label:'≥5 GW operating + under construction'}]:[{n:0,label:'No action in view'},{n:1,label:'2028 or later'},{n:2,label:'During 2027'},{n:3,label:'Q1 2027 (inauguration / session)'},{n:4,label:'In force now'}];
-    $('#legend').innerHTML = L.map(t=>`<span class="item"><span class="sw t${t.n}"></span>${esc(t.label)}</span>`).join('');
+    $('#legend').innerHTML = L.map(t=>`<span class="item"><span class="sw t${t.n}"></span>${esc(t.label)}</span>`).join('') + (view==='tier'?HATCH:'');
+    hatch.style('display', view==='tier'?null:'none');
   }
   $('#views').addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return; view=b.dataset.v; [...$('#views').children].forEach(x=>x.setAttribute('aria-pressed', x===b)); recolor(); });
   function select(ab){
@@ -286,7 +294,7 @@ td.num{font-family:var(--mono); text-align:right; white-space:nowrap;}
     if(!s){ d.innerHTML=`<div><h3>${ab}</h3><p class="muted">No material data-center buildout; the result does not reach the AI trade through this state.</p></div><div></div>`; return; }
     d.innerHTML = `<div>
       <h3>${esc(s.name)}<span class="tierpill t${s.tier}">${esc(TIERS[s.tier].label)}</span></h3>
-      <p>${esc(s.headline)}</p>
+      <p>${esc(s.headline)}</p>${s.pending?`<p><span class="tierpill t${s.pending}" style="margin:0 6px 0 0">pending → ${esc(TIERS[s.pending].label)}</span>${esc(s.pendingNote||'')}</p>`:''}
       <p class="k">Who holds the lever</p><p>${esc(s.who)}</p>
       <p class="k">What is at risk</p><ul>${(s.atRisk||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
       <p class="k">Flagship projects</p><ul>${(s.projects||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
