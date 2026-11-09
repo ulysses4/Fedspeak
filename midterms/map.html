@@ -41,16 +41,17 @@ window.topojson = (function(){
 })();
 </script>
 <style>
-/* Companion to the Midterms AI Tracker. Severity is ordinal, so the map uses one
-   hue light->dark (not a traffic light), with state labels, a legend and a table
-   view so no reading depends on color alone. */
+/* Companion to the Midterms AI Tracker. Diverging scale: teal-green for welcoming
+   states, red for braking states, grey for none. The green is blue-tilted so the two
+   light mid-steps stay apart for deutan/protan readers; state labels, legend and the
+   table carry the same information without color. */
 :root{
   --bg:#f9f9f7; --surface:#fcfcfb; --surface-raised:#ffffff;
   --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781;
   --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,0.10);
   --accent:#2a78d6; --accent-soft:#eaf1fb;
-  --t0:#e6e5df; --t1:#f7ddd2; --t2:#efa88f; --t3:#d4523d; --t4:#8a1c1c;
-  --t4-ink:#fff; --t3-ink:#fff;
+  --t0:#e6e5df; --t1:#1b7f5c; --t2:#a9dccb; --t3:#efa48e; --t4:#8a1c1c;
+  --t4-ink:#fff; --t3-ink:#1a0a0a; --t1-ink:#fff; --t2-ink:#0b2a1f;
   --serif:"Source Serif 4", Georgia, serif; --sans:"IBM Plex Sans", system-ui, sans-serif; --mono:"IBM Plex Mono", ui-monospace, monospace;
   color-scheme: light;
 }
@@ -60,8 +61,8 @@ window.topojson = (function(){
     --text-primary:#f0efec; --text-secondary:#c3c2b7; --text-muted:#8e8c86;
     --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,0.10);
     --accent:#3987e5; --accent-soft:#122235;
-    --t0:#2a2a28; --t1:#4a2e28; --t2:#8c4535; --t3:#c9553f; --t4:#f07a66;
-    --t4-ink:#1a0a0a; --t3-ink:#fff;
+    --t0:#2a2a28; --t1:#66d9b1; --t2:#2c8c6c; --t3:#86302a; --t4:#f27e6a;
+    --t4-ink:#1a0a0a; --t3-ink:#fff; --t1-ink:#0b2a1f; --t2-ink:#fff;
     color-scheme: dark;
   }
 }
@@ -70,8 +71,8 @@ window.topojson = (function(){
   --text-primary:#f0efec; --text-secondary:#c3c2b7; --text-muted:#8e8c86;
   --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,0.10);
   --accent:#3987e5; --accent-soft:#122235;
-  --t0:#2a2a28; --t1:#4a2e28; --t2:#8c4535; --t3:#c9553f; --t4:#f07a66;
-  --t4-ink:#1a0a0a; --t3-ink:#fff;
+  --t0:#2a2a28; --t1:#66d9b1; --t2:#2c8c6c; --t3:#86302a; --t4:#f27e6a;
+  --t4-ink:#1a0a0a; --t3-ink:#fff; --t1-ink:#0b2a1f; --t2-ink:#fff;
   color-scheme: dark;
 }
 *{box-sizing:border-box;}
@@ -99,11 +100,11 @@ section.card .sub{font-size:13px; color:var(--text-muted); margin:0 0 14px;}
 .state:hover, .state.sel{stroke:var(--text-primary); stroke-width:1.6; filter:brightness(1.05);}
 .state.dim{opacity:.35;}
 .slabel{font-family:var(--mono); font-size:9.5px; font-weight:500; text-anchor:middle; pointer-events:none; fill:var(--text-primary);}
-.slabel.inv{fill:var(--t4-ink);}
+.slabel.inv{fill:var(--t4-ink);} .slabel.inv1{fill:var(--t1-ink);} .slabel.inv2{fill:var(--t2-ink);} .slabel.inv3{fill:var(--t3-ink);}
 .tip{position:absolute; pointer-events:none; background:var(--surface-raised); border:1px solid var(--border); border-radius:8px; padding:9px 11px; font-size:12.5px; line-height:1.45; color:var(--text-primary); box-shadow:0 4px 14px rgba(0,0,0,.14); max-width:320px; display:none; z-index:2;}
 .tip b{font-weight:600;} .tip .m{color:var(--text-muted); font-family:var(--mono); font-size:11px;}
 .tierpill{display:inline-block; font-family:var(--mono); font-size:10.5px; padding:1px 7px; border-radius:999px; margin-left:6px; vertical-align:middle;}
-.tierpill.t4{background:var(--t4); color:var(--t4-ink);} .tierpill.t3{background:var(--t3); color:var(--t3-ink);} .tierpill.t2{background:var(--t2); color:#1a0a0a;} .tierpill.t1{background:var(--t1); color:#1a0a0a;} .tierpill.t0{background:var(--t0); color:var(--text-secondary);}
+.tierpill.t4{background:var(--t4); color:var(--t4-ink);} .tierpill.t3{background:var(--t3); color:var(--t3-ink);} .tierpill.t2{background:var(--t2); color:var(--t2-ink);} .tierpill.t1{background:var(--t1); color:var(--t1-ink);} .tierpill.t0{background:var(--t0); color:var(--text-secondary);}
 /* detail panel */
 .detail{display:grid; grid-template-columns:minmax(0,1fr) 260px; gap:20px; margin-top:14px; padding-top:14px; border-top:1px solid var(--grid);}
 @media (max-width:720px){.detail{grid-template-columns:1fr;}}
@@ -150,7 +151,7 @@ td.num{font-family:var(--mono); text-align:right; white-space:nowrap;}
 <header>
   <p class="eyebrow"><a href="./">← Midterms AI Tracker</a><a href="../">Dot Plot Detective</a><span>Post-midterm 2026</span></p>
   <h1>Where the AI buildout can be hit, and how</h1>
-  <p class="lede">State by state: how much data-center capacity sits there, which lever the new political configuration can pull (governor's pen, legislature, utility commission, local zoning), and when. Darker means a statewide brake is in force or pledged; lighter means friction is local or rules are only tightening.</p>
+  <p class="lede">State by state: how much data-center capacity sits there, which lever the new political configuration can pull (governor's pen, legislature, utility commission, local zoning), and when. Greens are states welcoming data centers (dark green: open or likely beneficiary; light green: state neutral, friction only local). Reds are states braking (light red: state rules tightening; dark red: a statewide pause in force or pledged). Grey has no material buildout.</p>
   <p class="stamp" id="stamp"></p>
 </header>
 
@@ -270,11 +271,11 @@ td.num{font-family:var(--mono); text-align:right; white-space:nowrap;}
     })
     .on('mouseleave', ()=> $('#tip').style.display='none')
     .on('click', (ev,f)=> select(fipsToAbbr[f.id]));
-  g.selectAll('text').data(states).join('text').attr('class', f=>{ const s=S[fipsToAbbr[f.id]]; return 'slabel'+((s&&tierOf(s)>=4)?' inv':''); })
+  g.selectAll('text').data(states).join('text').attr('class', f=>{ const s=S[fipsToAbbr[f.id]]; return 'slabel'+(s?' inv'+(tierOf(s)>=4?'':tierOf(s)):''); })
     .attr('transform', f=>{ const c=path.centroid(f); return `translate(${c[0]},${c[1]+3})`; }).text(f=>fipsToAbbr[f.id]);
   function recolor(){
     paths.attr('fill', f=>{ const s=S[fipsToAbbr[f.id]]; return tierVar(s?tierOf(s):0); });
-    g.selectAll('text').attr('class', f=>{ const s=S[fipsToAbbr[f.id]]; return 'slabel'+((s&&tierOf(s)>=4)?' inv':''); });
+    g.selectAll('text').attr('class', f=>{ const s=S[fipsToAbbr[f.id]]; return 'slabel'+(s?' inv'+(tierOf(s)>=4?'':tierOf(s)):''); });
     const L = view==='tier'?TIERS: view==='exposure'?[{n:0,label:'<0.1 GW'},{n:1,label:'0.1–0.8 GW'},{n:2,label:'0.8–2 GW'},{n:3,label:'2–5 GW'},{n:4,label:'≥5 GW operating + under construction'}]:[{n:0,label:'No action in view'},{n:1,label:'2028 or later'},{n:2,label:'During 2027'},{n:3,label:'Q1 2027 (inauguration / session)'},{n:4,label:'In force now'}];
     $('#legend').innerHTML = L.map(t=>`<span class="item"><span class="sw t${t.n}"></span>${esc(t.label)}</span>`).join('');
   }
